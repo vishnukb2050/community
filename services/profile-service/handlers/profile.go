@@ -50,6 +50,9 @@ func UpdateProfile(c *gin.Context) {
 	if req.Email != "" {
 		user.Email = req.Email
 	}
+	if req.Budget != 0 {
+		user.Budget = req.Budget
+	}
 
 	config.DB.Save(&user)
 

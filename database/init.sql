@@ -11,7 +11,8 @@ CREATE TABLE users (
     created_at TIMESTAMP DEFAULT NOW(),
     updated_at TIMESTAMP DEFAULT NOW(),
     allow_chat_requests BOOLEAN DEFAULT true,
-    hide_phone_number BOOLEAN DEFAULT false
+    hide_phone_number BOOLEAN DEFAULT false,
+    budget DECIMAL(10,2) DEFAULT 0.00
 );
 
 -- Communities Table

@@ -15,11 +15,13 @@ type User struct {
 	UpdatedAt         time.Time `json:"updated_at"`
 	AllowChatRequests bool      `json:"allow_chat_requests"`
 	HidePhoneNumber   bool      `json:"hide_phone_number"`
+	Budget            float64   `gorm:"default:0.00" json:"budget"`
 }
 
 type UpdateProfileRequest struct {
-	Name  string `json:"name"`
-	Email string `json:"email"`
+	Name   string  `json:"name"`
+	Email  string  `json:"email"`
+	Budget float64 `json:"budget"`
 }
 
 type UpdateSettingsRequest struct {

@@ -26,3 +26,8 @@ type CreateCommunityRequest struct {
 	Name        string `json:"name" binding:"required"`
 	Description string `json:"description"`
 }
+
+type User struct {
+	ID     uuid.UUID `gorm:"type:uuid;primary_key" json:"id"`
+	Mobile string    `json:"mobile"`
+}

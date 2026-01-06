@@ -28,6 +28,33 @@ func GetCommunities(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"communities": communities})
 }
 
+func GetCommunity(c *gin.Context) {
+	communityID := c.Param("id")
+
+	var community models.Community
+	if err := config.DB.Where("id = ?", communityID).First(&community).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Community not found"})
+		return
+	}
+
+	var members []struct {
+		models.CommunityMember
+		Name   string `json:"name"`
+		Mobile string `json:"mobile"`
+	}
+
+	config.DB.Table("community_members").
+		Select("community_members.*, users.name, users.mobile").
+		Joins("JOIN users ON community_members.user_id = users.id").
+		Where("community_members.community_id = ?", communityID).
+		Find(&members)
+
+	c.JSON(http.StatusOK, gin.H{
+		"community": community,
+		"members":   members,
+	})
+}
+
 func CreateCommunity(c *gin.Context) {
 	userID := c.GetString("user_id")
 
@@ -86,4 +113,49 @@ func JoinCommunity(c *gin.Context) {
 
 	config.DB.Create(&member)
 	c.JSON(http.StatusOK, gin.H{"message": "Joined community successfully", "community": community})
+}
+
+func AddMember(c *gin.Context) {
+	userID := c.GetString("user_id")
+
+	var req struct {
+		CommunityID string `json:"community_id"`
+		Mobile      string `json:"mobile"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Verify Admin
+	var adminMember models.CommunityMember
+	if err := config.DB.Where("community_id = ? AND user_id = ? AND role = 'admin'", req.CommunityID, userID).First(&adminMember).Error; err != nil {
+		c.JSON(http.StatusForbidden, gin.H{"error": "Only admins can add members"})
+		return
+	}
+
+	// Find Target User
+	var targetUser models.User
+	if err := config.DB.Table("users").Where("mobile = ?", req.Mobile).First(&targetUser).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "User not found with this mobile number"})
+		return
+	}
+
+	// Check if already member
+	var existingMember models.CommunityMember
+	if err := config.DB.Where("community_id = ? AND user_id = ?", req.CommunityID, targetUser.ID).First(&existingMember).Error; err == nil {
+		c.JSON(http.StatusConflict, gin.H{"error": "User is already a member"})
+		return
+	}
+
+	// Add Member
+	newMember := models.CommunityMember{
+		CommunityID: uuid.MustParse(req.CommunityID),
+		UserID:      targetUser.ID,
+		Role:        "member",
+		JoinedAt:    time.Now(),
+	}
+	config.DB.Create(&newMember)
+
+	c.JSON(http.StatusOK, gin.H{"message": "Member added successfully"})
 }

@@ -159,3 +159,28 @@ func HealthCheck(c *gin.Context) {
 		"time":    time.Now(),
 	})
 }
+
+// SyncContacts - Find users by mobile numbers
+func SyncContacts(c *gin.Context) {
+	var req struct {
+		Contacts []string `json:"contacts"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request"})
+		return
+	}
+
+	if len(req.Contacts) == 0 {
+		c.JSON(http.StatusOK, gin.H{"users": []models.User{}})
+		return
+	}
+
+	var users []models.User
+	if err := config.DB.Where("mobile IN ?", req.Contacts).Find(&users).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to sync contacts"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"users": users})
+}

@@ -22,8 +22,10 @@ func main() {
 	api.Use(middleware.ExtractUserID())
 	{
 		api.GET("", handlers.GetCommunities)
+		api.GET("/:id", handlers.GetCommunity)
 		api.POST("", handlers.CreateCommunity)
 		api.POST("/join", handlers.JoinCommunity)
+		api.POST("/add-member", handlers.AddMember)
 	}
 
 	log.Printf("🚀 community service starting on port %s", cfg.Port)

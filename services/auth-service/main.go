@@ -38,6 +38,7 @@ func main() {
 		api.POST("/verify-otp", handlers.VerifyOTP)
 		api.POST("/refresh", middleware.JWTAuth(), handlers.RefreshToken)
 		api.POST("/logout", middleware.JWTAuth(), handlers.Logout)
+		api.POST("/contacts/sync", middleware.JWTAuth(), handlers.SyncContacts)
 	}
 
 	// Start server
