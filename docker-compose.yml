@@ -1,0 +1,430 @@
+version: '3.8'
+
+services:
+  # Infrastructure
+  postgres:
+    image: postgres:15-alpine
+    container_name: community-postgres
+    environment:
+      POSTGRES_DB: community_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres123
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - community-network
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U postgres" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  minio:
+    image: minio/minio:latest
+    container_name: community-minio
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin123
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio_data:/data
+    networks:
+      - community-network
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:9000/minio/health/live" ]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+
+  redis:
+    image: redis:7-alpine
+    container_name: community-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - community-network
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  # API Gateway
+  api-gateway:
+    build: ./services/api-gateway
+    container_name: community-api-gateway
+    ports:
+      - "8000:8000"
+    environment:
+      - AUTH_SERVICE_URL=http://auth-service:8001
+      - PROFILE_SERVICE_URL=http://profile-service:8002
+      - EXPENSE_SERVICE_URL=http://expense-service:8003
+      - REMINDER_SERVICE_URL=http://reminder-service:8004
+      - NOTES_SERVICE_URL=http://notes-service:8005
+      - SCANNER_SERVICE_URL=http://scanner-service:8006
+      - DOCUMENT_SERVICE_URL=http://document-service:8007
+      - CALENDAR_SERVICE_URL=http://calendar-service:8008
+      - COMMUNITY_SERVICE_URL=http://community-service:8009
+      - NOTICE_SERVICE_URL=http://notice-service:8010
+      - POLL_SERVICE_URL=http://poll-service:8011
+      - MEETING_SERVICE_URL=http://meeting-service:8012
+      - CHAT_SERVICE_URL=http://chat-service:8013
+      - NOTIFICATION_SERVICE_URL=http://notification-service:8014
+      - JWT_SECRET=your-super-secret-jwt-key-change-in-production
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+    depends_on:
+      - redis
+    networks:
+      - community-network
+    restart: unless-stopped
+
+  # Auth Service
+  auth-service:
+    build: ./services/auth-service
+    container_name: community-auth-service
+    ports:
+      - "8001:8001"
+    environment:
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USER=postgres
+      - DB_PASSWORD=postgres123
+      - DB_NAME=community_db
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - JWT_SECRET=your-super-secret-jwt-key-change-in-production
+      - MSG91_AUTH_KEY=your-msg91-auth-key
+      - MSG91_SENDER_ID=your-sender-id
+      - MSG91_TEMPLATE_ID=your-template-id
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - community-network
+    restart: unless-stopped
+
+  # Profile Service
+  profile-service:
+    build: ./services/profile-service
+    container_name: community-profile-service
+    ports:
+      - "8002:8002"
+    environment:
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USER=postgres
+      - DB_PASSWORD=postgres123
+      - DB_NAME=community_db
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - community-network
+    restart: unless-stopped
+
+  # Expense Service
+  expense-service:
+    build: ./services/expense-service
+    container_name: community-expense-service
+    ports:
+      - "8003:8003"
+    environment:
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USER=postgres
+      - DB_PASSWORD=postgres123
+      - DB_NAME=community_db
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - community-network
+    restart: unless-stopped
+
+  # Reminder Service
+  reminder-service:
+    build: ./services/reminder-service
+    container_name: community-reminder-service
+    ports:
+      - "8004:8004"
+    environment:
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USER=postgres
+      - DB_PASSWORD=postgres123
+      - DB_NAME=community_db
+      - NOTIFICATION_SERVICE_URL=http://notification-service:8014
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - community-network
+    restart: unless-stopped
+
+  # Notes Service
+  notes-service:
+    build: ./services/notes-service
+    container_name: community-notes-service
+    ports:
+      - "8005:8005"
+    environment:
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USER=postgres
+      - DB_PASSWORD=postgres123
+      - DB_NAME=community_db
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - community-network
+    restart: unless-stopped
+
+  # Scanner Service
+  scanner-service:
+    build: ./services/scanner-service
+    container_name: community-scanner-service
+    ports:
+      - "8006:8006"
+    environment:
+      - MINIO_ENDPOINT=minio:9000
+      - MINIO_ACCESS_KEY=minioadmin
+      - MINIO_SECRET_KEY=minioadmin123
+      - MINIO_USE_SSL=false
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USER=postgres
+      - DB_PASSWORD=postgres123
+      - DB_NAME=community_db
+    depends_on:
+      - minio
+    networks:
+      - community-network
+    restart: unless-stopped
+
+  # Document Service
+  document-service:
+    build: ./services/document-service
+    container_name: community-document-service
+    ports:
+      - "8007:8007"
+    environment:
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USER=postgres
+      - DB_PASSWORD=postgres123
+      - DB_NAME=community_db
+      - MINIO_ENDPOINT=minio:9000
+      - MINIO_ACCESS_KEY=minioadmin
+      - MINIO_SECRET_KEY=minioadmin123
+      - MINIO_USE_SSL=false
+    depends_on:
+      postgres:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    networks:
+      - community-network
+    restart: unless-stopped
+
+  # Calendar Service
+  calendar-service:
+    build: ./services/calendar-service
+    container_name: community-calendar-service
+    ports:
+      - "8008:8008"
+    environment:
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USER=postgres
+      - DB_PASSWORD=postgres123
+      - DB_NAME=community_db
+      - REMINDER_SERVICE_URL=http://reminder-service:8004
+      - COMMUNITY_SERVICE_URL=http://community-service:8009
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - community-network
+    restart: unless-stopped
+
+  # Community Service
+  community-service:
+    build: ./services/community-service
+    container_name: community-community-service
+    ports:
+      - "8009:8009"
+    environment:
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USER=postgres
+      - DB_PASSWORD=postgres123
+      - DB_NAME=community_db
+      - NOTIFICATION_SERVICE_URL=http://notification-service:8014
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - community-network
+    restart: unless-stopped
+
+  # Notice Service
+  notice-service:
+    build: ./services/notice-service
+    container_name: community-notice-service
+    ports:
+      - "8010:8010"
+    environment:
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USER=postgres
+      - DB_PASSWORD=postgres123
+      - DB_NAME=community_db
+      - NOTIFICATION_SERVICE_URL=http://notification-service:8014
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - community-network
+    restart: unless-stopped
+
+  # Poll Service
+  poll-service:
+    build: ./services/poll-service
+    container_name: community-poll-service
+    ports:
+      - "8011:8011"
+    environment:
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USER=postgres
+      - DB_PASSWORD=postgres123
+      - DB_NAME=community_db
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - community-network
+    restart: unless-stopped
+
+  # Meeting Service
+  meeting-service:
+    build: ./services/meeting-service
+    container_name: community-meeting-service
+    ports:
+      - "8012:8012"
+    environment:
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USER=postgres
+      - DB_PASSWORD=postgres123
+      - DB_NAME=community_db
+      - MINIO_ENDPOINT=minio:9000
+      - MINIO_ACCESS_KEY=minioadmin
+      - MINIO_SECRET_KEY=minioadmin123
+      - MINIO_USE_SSL=false
+    depends_on:
+      postgres:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    networks:
+      - community-network
+    restart: unless-stopped
+
+  # Chat Service
+  chat-service:
+    build: ./services/chat-service
+    container_name: community-chat-service
+    ports:
+      - "8013:8013"
+    environment:
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USER=postgres
+      - DB_PASSWORD=postgres123
+      - DB_NAME=community_db
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - NOTIFICATION_SERVICE_URL=http://notification-service:8014
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - community-network
+    restart: unless-stopped
+
+  # Notification Service
+  notification-service:
+    build: ./services/notification-service
+    container_name: community-notification-service
+    ports:
+      - "8014:8014"
+    environment:
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USER=postgres
+      - DB_PASSWORD=postgres123
+      - DB_NAME=community_db
+      - MSG91_AUTH_KEY=your-msg91-auth-key
+      - FIREBASE_SERVER_KEY=your-firebase-server-key
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - community-network
+    restart: unless-stopped
+
+  # Web Admin Panel
+  web-admin:
+    build: ./web-admin
+    container_name: community-web-admin
+    ports:
+      - "3000:3000"
+    environment:
+      - REACT_APP_API_GATEWAY_URL=http://localhost:8000
+    depends_on:
+      - api-gateway
+    networks:
+      - community-network
+    restart: unless-stopped
+
+  # Nginx Reverse Proxy
+  nginx:
+    image: nginx:alpine
+    container_name: community-nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/ssl:/etc/nginx/ssl:ro
+    depends_on:
+      - api-gateway
+      - web-admin
+    networks:
+      - community-network
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  minio_data:
+  redis_data:
+
+
+networks:
+  community-network:
+    driver: bridge

@@ -1,0 +1,48 @@
+# .gitignore for SocWhiz Community Monorepo
+
+# Flutter / Android / iOS
+**/android-app/build/
+**/android-app/.dart_tool/
+**/android-app/.flutter-plugins
+**/android-app/.flutter-plugins-dependencies
+**/android-app/.pub-cache/
+**/android-app/.packages
+**/android-app/pubspec.lock
+**/android-app/android/app/build/
+**/android-app/android/.gradle
+**/android-app/android/local.properties
+**/android-app/ios/.generated/
+**/android-app/ios/Flutter/Generated.xcconfig
+**/android-app/ios/Flutter/flutter_export_environment.sh
+**/android-app/ios/Pods/
+
+# Node.js / Web Admin
+**/node_modules/
+**/web-admin/build/
+**/web-admin/dist/
+**/web-admin/.env
+**/web-admin/.env.local
+**/web-admin/npm-debug.log*
+**/web-admin/yarn-debug.log*
+**/web-admin/yarn-error.log*
+
+# Go / Services
+**/services/*/bin/
+**/services/*/dist/
+**/services/*/.env
+**/services/*/main  # Binary name
+**/*.exe
+**/*.so
+**/*.dll
+
+# Common
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+*.pem
+*.key
+*.log
+docker-compose.override.yml
+community.pem
